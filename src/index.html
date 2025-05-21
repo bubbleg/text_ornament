@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Canvas Text - поворот текста</title>
+    <script src="https://unpkg.com/alpinejs@3.14.9/dist/cdn.min.js" defer></script>
+    <style>
+        @font-face {
+            font-family: CeraCY;
+            font-weight: 400;
+            font-style: normal;
+            src: url(/fonts/CeraCY-400-normal.woff2) format("woff2"), url(/fonts/CeraCY-400-normal.woff) format("woff")
+        }
+
+        @font-face {
+            font-family: 'CeraPro-Regular';
+            src: url('/fonts/cerapro-regular.eot');
+            /* IE 9 Compatibility Mode */
+            src: url('/fonts/cerapro-regular.eot?#iefix') format('embedded-opentype'),
+                /* IE < 9 */
+                url('/fonts/cerapro-regular.woff2') format('woff2'),
+                /* Super Modern Browsers */
+                url('/fonts/cerapro-regular.woff') format('woff'),
+                /* Firefox >= 3.6, any other modern browser */
+                url('/fonts/cerapro-regular.ttf') format('truetype'),
+                /* Safari, Android, iOS */
+                url('/fonts/cerapro-regular.svg#cerapro-regular') format('svg');
+            /* Chrome < 4, Legacy iOS */
+        }
+
+        canvas {
+            border: 1px solid #ccc;
+            margin-top: 20px;
+            display: block;
+        }
+
+        label {
+            display: block;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+
+<body x-data="canvasApp">
+
+    <h2>Введите данные:</h2>
+
+    <label>
+        Текст:
+        <input type="text" x-model="text" @input="drawText()" placeholder="Введите текст" />
+    </label>
+
+    <label>
+        Ширина canvas:
+        <input type="number" x-model.number="width" @input="resizeCanvas()" min="100" max="3000" />
+    </label>
+
+    <label>
+        Размер шрифта:
+        <input type="number" x-model.number="fontSize" @input="resizeCanvas()" min="10" max="100" />
+    </label>
+    <label>
+        Зазор шагами:
+        <input type="number" x-model.number="heightGap" @input="resizeCanvas()" min="0" max="100" />
+    </label>
+
+    <label>
+        Ширина canvas:
+        <input type="number" x-model.number="stepGap" @input="resizeCanvas()" min="0" max="100" />
+    </label>
+
+    <label>
+        Число линий:
+        <input type="number" x-model.number="lines" @input="resizeCanvas()" min="4" max="100" />
+    </label>
+
+    <label>
+        Семейство шрифта:
+        <input type="text" x-model="fontFamily" @input="drawText()" />
+    </label>
+
+    <label>
+        Цвет фона:
+        <input type="color" x-model="bgColor" @input="drawText()" />
+    </label>
+
+    <label>
+        Цвет текста:
+        <input type="color" x-model="fontColor" @input="drawText()" />
+    </label>
+
+    <br />
+
+    <canvas id="myCanvas" :width="width" :height="actualHeight" style="zoom: 0.7;"></canvas>
+
+    <script>
+        document.addEventListener('alpine:init', () => {
+            Alpine.data('canvasApp', () => ({
+                text: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit',
+                get upperedText() {
+                    return this.text.toUpperCase();
+                },
+                width: 1386,
+                //height: 400,
+                lines: 30,
+                fontColor: '#16345D',
+                bgColor: '#ffffff',
+                fontFamily: "sans-serif",
+                fontSize: 32,
+                heightGap: 12,
+                stepGap: 6,
+                fontList: [""],
+                fontsUrl: {
+                    //"CeraPro-Regular": '/fonts/cerapro-regular.ttf',
+                    //"CeraCY": "/fonts/CeraCY-400-normal.woff2"
+                },
+
+
+
+                init() {
+
+                    Object.entries(this.fontsUrl)
+                        .map(([key, value]) => new FontFace(key, `url(${value})`))
+                        .forEach(ff => ff.load().then(function (font) {
+                            document.fonts.add(font);
+                        }));
+
+
+                    Alpine.nextTick(async () => {
+                        // Этот код выполнится после обновления DOM
+                        this.drawText();
+                    });
+                },
+                get actualHeight() {
+                    if (!this.text) {
+                        return 50;
+                    }
+
+                    const canvas = document.getElementById('myCanvas');
+                    const ctx = canvas.getContext('2d');
+
+                    ctx.font = `${this.fontSize}px ${this.fontFamily}`;
+                    return ctx.measureText(this.upperedText).width + 40;
+                },
+                get fontHeight() {
+                    const text = document.createElement('span');
+                    text.style.fontSize = `${this.fontSize}px`;
+                    text.style.fontFamily = this.fontFamily;
+                    text.style.lineHeight = 1;
+
+                    //text.style.position = 'absolute';
+                    //text.style.left = '-9999px';
+                    text.textContent = 'M'; // Высокий символ для точности
+
+                    document.body.appendChild(text);
+                    const height = text.offsetHeight;
+                    document.body.removeChild(text);
+
+                    return height;
+                },
+                drawText() {
+                    if (!this.text) {
+                        return;
+                    }
+                    const canvas = document.getElementById('myCanvas');
+                    const ctx = canvas.getContext('2d');
+
+                    // Очистка
+                    ctx.fillStyle = this.bgColor;
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    ctx.imageSmoothingEnabled = true;
+                    ctx.imageSmoothingQuality = 'high';
+
+                    // Настройки
+                    //const fontSize = 24;
+                    ctx.font = `${this.fontSize}px ${this.fontFamily}`;
+                    const textWidth = ctx.measureText(this.upperedText).width;
+                    //const textHeight = ctx.measureText(this.upperedText).fontBoundingBoxAscent;
+                    //const textHeight = this.fontSize;// ctx.measureText(this.upperedText).fontBoundingBoxAscent;
+                    const textHeight = this.fontHeight;
+
+                    // Создаём временный canvas для текста
+                    const tempCanvas = document.createElement('canvas');
+                    const tempCtx = tempCanvas.getContext('2d');
+
+                    tempCanvas.width = textWidth;
+                    tempCanvas.height = textHeight;
+
+                    // Рисуем текст на временном canvas
+                    tempCtx.fillStyle = this.fontColor;
+                    tempCtx.font = ctx.font;
+                    tempCtx.textAlign = 'center';
+                    tempCtx.textBaseline = 'middle';
+                    tempCtx.fillText(this.upperedText, textWidth / 2, textHeight / 2);
+
+                    // Поворачиваем текст на 90 градусов
+                    const rotatedCanvas = document.createElement('canvas');
+                    const rotatedCtx = rotatedCanvas.getContext('2d');
+
+                    rotatedCanvas.width = textHeight;
+                    rotatedCanvas.height = textWidth;
+
+                    rotatedCtx.save();
+                    rotatedCtx.translate(rotatedCanvas.width / 2, rotatedCanvas.height / 2);
+                    rotatedCtx.rotate(-Math.PI / 2); // 90 градусов
+                    rotatedCtx.drawImage(tempCanvas, -textWidth / 2, -textHeight / 2);
+                    rotatedCtx.restore();
+
+                    // Поворачиваем текст на 90 градусов
+                    const mirroredCanvas = document.createElement('canvas');
+                    const mirroredCtx = mirroredCanvas.getContext('2d');
+
+                    mirroredCanvas.width = textHeight;
+                    mirroredCanvas.height = textWidth;
+
+                    mirroredCtx.save();
+                    mirroredCtx.translate(rotatedCanvas.width / 2, rotatedCanvas.height / 2);
+                    mirroredCtx.rotate(-Math.PI / 2); // 90 градусов
+                    mirroredCtx.scale(1, -1);
+                    mirroredCtx.drawImage(tempCanvas, -textWidth / 2, -textHeight / 2);
+                    mirroredCtx.restore();
+
+                    // Рисуем повёрнутый текст по центру основного canvas
+                    const destWidth = rotatedCanvas.width;
+                    const destHeight = rotatedCanvas.height;
+                    let sGap = 0;
+
+                    for (let i = 0; i < this.lines; i++) {
+                        ctx.drawImage(
+                            rotatedCanvas,
+                            i * 2 * (textHeight - this.heightGap) + sGap,//(canvas.width - destWidth) / 2,
+                            (canvas.height - destHeight) / 2
+                        );
+
+                        ctx.drawImage(
+                            mirroredCanvas,
+                            (i * 2 + 1) * (textHeight - this.heightGap) + sGap,//(canvas.width - destWidth) / 2,
+                            (canvas.height - destHeight) / 2
+                        );
+                        sGap += this.stepGap
+                    }
+                },
+
+                resizeCanvas() {
+                    this.drawText();
+                }
+            }));
+        });
+    </script>
+
+</body>
+
+</html>
